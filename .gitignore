@@ -1,0 +1,6 @@
+.idea
+.venv
+outputs
+uploads
+app/*pycache*
+.env

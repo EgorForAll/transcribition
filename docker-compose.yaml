@@ -1,0 +1,25 @@
+services:
+  transcription-service:
+    build: .
+    container_name: transcription-service
+    ports:
+      - "${PORT:-8000}:8000"
+    volumes:
+      - ./uploads:/app/uploads
+      - ./outputs:/app/outputs
+    environment:
+      - DEBUG=${DEBUG:-False}
+      - WHISPER_MODEL=${WHISPER_MODEL:-base}
+      - UPLOAD_DIR=${UPLOAD_DIR:-uploads}
+      - OUTPUT_DIR=${OUTPUT_DIR:-outputs}
+      - EXTERNAL_API_URL=${EXTERNAL_API_URL:-https://httpbin.org/post}
+      - EXTERNAL_API_TIMEOUT=${EXTERNAL_API_TIMEOUT:-30}
+      - HOST=${HOST:-0.0.0.0}
+      - PORT=${PORT:-8000}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
