@@ -140,7 +140,7 @@ async def http_exception_handler(request, exc):
         content=ErrorResponse(
             error="HTTP Exception",
             detail=exc.detail
-        ).dict()
+        ).model_dump()
     )
 
 

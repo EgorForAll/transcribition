@@ -139,3 +139,72 @@ curl -X POST "http://localhost:8000/transcribe" \
 curl -X GET "http://localhost:8000/transcriptions/550e8400-e29b-41d4-a716-446655440000/download" \
   -o transcription.txt
 ```
+
+## Тесты
+
+Проект включает комплексные тесты для API эндпоинтов, бизнес-логики и производительности. Тесты написаны с использованием pytest и FastAPI TestClient.
+
+### Запуск тестов
+Команды для запуска тестов:
+1) `pip install -r requirements-test.txt` - установить зависимости
+2) `python -m pytest tests/ -v` - запуск тестов с подробным выводом
+ 
+#### API Endpoints Tests (TestTranscriptionAPI)
+1. Корневой эндпоинт
+- Проверяет доступность сервиса
+- Возвращает информацию о сервисе и доступных эндпоинтах
+- тест: **test_root_endpoint()**
+
+2. Транскрибирование аудио в различных форматах
+- Поддерживает различные форматы аудио (MP3, WAV, M4A, FLAC)
+- Проверяет успешную обработку файлов
+- тест: **test_transcribe_valid_audio_formats()**
+
+3. Валидация входных данных 
+- Проверка недопустимых расширений файлов
+- Проверка отсутствия файла
+- тесты: **test_transcribe_invalid_file_extension(), test_transcribe_missing_file()**
+
+4. Скачивание результатов
+- Успешное скачивание транскрипции
+- Обработка несуществующих транскрипций
+- тесты: **test_download_transcription_success(), test_download_nonexistent_transcription()**
+
+5. Обработка больших файлов
+- Симуляция работы с большими файлами (10MB+)
+- Тест: **test_transcribe_large_file()**
+
+6. Параллельные запросы
+- Проверка обработки нескольких одновременных запросов
+- тест: **test_concurrent_transcriptions()**
+
+
+##### Business Logic Tests (TestTranscriptionService)
+1. Обработка файлов
+- Сохранение загруженных файлов
+- Обработка файлов без имени
+- тесты: **test_save_upload_file(), test_save_upload_file_no_filename()**
+
+2. Транскрибирование аудио
+- Успешное транскрибирование с моком Whisper
+- Обработка несуществующих файлов
+- тесты: **test_transcribe_audio_success(), test_transcribe_audio_file_not_found()**
+
+3. Сохранение результатов
+- Сохранение текста транскрипции в файлы
+- тест: **test_save_transcription_text()**
+
+4. Очистка ресурсов
+- Удаление временных файлов
+- тест: test_cleanup_files()
+
+#### Performance Tests (TestPerformance)
+1. Время отклика API
+- Измерение времени обработки запросов
+- Максимальное время отклика: 10 секунд
+- тест: test_response_time()
+
+2. Использование памяти
+- Мониторинг утечек памяти при множественных запросах
+- Максимальное увеличение памяти: 100MB
+- тест: test_memory_usage()
