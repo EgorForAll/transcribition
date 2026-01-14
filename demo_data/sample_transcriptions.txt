@@ -1,0 +1,6 @@
+Это демонстрационная транскрипция русской речи.
+
+    Hello, this is a demo transcription of English speech.
+
+    Short speech example for testing.
+    

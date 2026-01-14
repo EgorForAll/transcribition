@@ -2,18 +2,32 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
+# Устанавливаем системные зависимости
 RUN apt-get update && apt-get install -y \
     ffmpeg \
+    curl \
+    libsndfile1 \
     && rm -rf /var/lib/apt/lists/*
 
+# Копируем единый requirements
 COPY requirements.txt .
 
+# Устанавливаем все зависимости Python
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-COPY app/ ./app/
+# Копируем весь проект
+COPY . .
 
-RUN mkdir -p uploads outputs
+# Создаем необходимые директории
+RUN mkdir -p uploads outputs demo_data
 
-EXPOSE 8000
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Создаем скрипт запуска
+COPY docker-entrypoint.sh .
+RUN chmod +x docker-entrypoint.sh
+
+# Открываем порты
+EXPOSE 8000 8501
+
+# Определяем точку входа
+ENTRYPOINT ["./docker-entrypoint.sh"]
