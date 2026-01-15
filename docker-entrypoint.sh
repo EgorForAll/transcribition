@@ -71,7 +71,6 @@ case $MODE in
         ;;
     "demo")
         echo "🔧 Mode: Demo only"
-        # В режиме только демо, используем переменную окружения для API URL
         if [ -z "$API_URL" ]; then
             echo "⚠️ API_URL not set, using default"
             export API_URL="http://localhost:8000"
@@ -88,27 +87,6 @@ case $MODE in
         exit 1
         ;;
 esac
-
-# Проверка здоровья сервисов
-if [ "$MODE" = "all" ]; then
-    echo "🏥 Health check..."
-    sleep 3
-
-    # Проверка API
-    if curl -s -f http://localhost:8000/health > /dev/null 2>&1; then
-        echo "✅ API is healthy"
-    else
-        echo "❌ API health check failed"
-    fi
-
-    # Проверка демо
-    sleep 2
-    if curl -s -f http://localhost:8501/_stcore/health > /dev/null 2>&1; then
-        echo "✅ Demo is healthy"
-    else
-        echo "⚠️ Demo health check failed (may still be starting)"
-    fi
-fi
 
 # Информация о доступных сервисах
 echo ""

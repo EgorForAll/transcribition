@@ -4,3 +4,6 @@ outputs
 uploads
 app/*pycache*
 .env
+demo_data/
+logs/
+.env_temp

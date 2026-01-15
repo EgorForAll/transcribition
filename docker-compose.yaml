@@ -1,44 +1,123 @@
 services:
-  transcription-service:
-    build: .
-    container_name: transcription-service
+  postgres:
+    image: postgres:15-alpine
+    container_name: transcription-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-transcription_db}
+      POSTGRES_USER: ${POSTGRES_USER:-transcription_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-transcription_password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
-      - "${API_PORT:-8000}:8000"
-      - "${DEMO_PORT:-8501}:8501"
+      - "${POSTGRES_PORT:-5432}:5432"
+    networks:
+      - transcription-network
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: transcription-redis
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis_password}
+    volumes:
+      - redis_data:/data
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    networks:
+      - transcription-network
+    restart: unless-stopped
+
+  transcription-api:
+    build: .
+    container_name: transcription-api
+    ports:
+      - "${PORT:-8000}:8000"
     volumes:
       - ./uploads:/app/uploads
       - ./outputs:/app/outputs
-      - ./demo_data:/app/demo_data
-      - ./app:/app/app:ro
+      - ./logs:/app/logs
+      - ./app:/app/app  # Для hot-reload в разработке
     environment:
       # Основные настройки
-      - RUN_MODE=${RUN_MODE:-all}
-      - DEBUG=${DEBUG:-True}
-      - WHISPER_MODEL=${WHISPER_MODEL:-base}
-      - UPLOAD_DIR=/app/uploads
-      - OUTPUT_DIR=/app/outputs
+      - APP_NAME=${APP_NAME:-Audio Transcription Service}
+      - VERSION=${VERSION:-1.0.0}
+      - DEBUG=${DEBUG:-true}
 
-      # Настройки API
+      # Настройки сервера
       - HOST=0.0.0.0
       - PORT=8000
-      - EXTERNAL_API_URL=${EXTERNAL_API_URL:-https://httpbin.org/post}
-      - EXTERNAL_API_TIMEOUT=${EXTERNAL_API_TIMEOUT:-30}
 
-      # Настройки для демо
-      - API_URL=${API_URL:-http://localhost:8000}
-      - STREAMLIT_SERVER_PORT=8501
-      - STREAMLIT_SERVER_ADDRESS=0.0.0.0
-      - STREAMLIT_THEME_BASE=light
-      - STREAMLIT_BROWSER_SERVER_ADDRESS=0.0.0.0
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+      # Настройки Whisper
+      - WHISPER_MODEL=${WHISPER_MODEL:-base}
+      - WHISPER_DEVICE=${WHISPER_DEVICE:-cpu}
+
+      # База данных
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-transcription_user}:${POSTGRES_PASSWORD:-transcription_password}@postgres:5432/${POSTGRES_DB:-transcription_db}
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=${POSTGRES_DB:-transcription_db}
+      - POSTGRES_USER=${POSTGRES_USER:-transcription_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-transcription_password}
+
+      # Redis
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=${REDIS_DB:-0}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-redis_password}
+      - REDIS_ENABLED=true
+
+      # Аналитика
+      - ANALYTICS_ENABLED=${ANALYTICS_ENABLED:-true}
+
+      # API Keys
+      - API_KEYS=${API_KEYS:-test_key}
+
+      # Внешний API
+      - EXTERNAL_API_ENABLED=${EXTERNAL_API_ENABLED:-false}
+      - EXTERNAL_API_URL=${EXTERNAL_API_URL:-}
+      - EXTERNAL_API_TIMEOUT=${EXTERNAL_API_TIMEOUT:-30}
+    depends_on:
+      - postgres
+      - redis
     networks:
       - transcription-network
+    restart: unless-stopped
+    command: >
+      bash -c "
+        echo '⏳ Ожидание PostgreSQL...'
+        while ! nc -z postgres 5432; do sleep 1; done
+        echo '✅ PostgreSQL готов'
+        echo '⏳ Ожидание Redis...'
+        while ! nc -z redis 6379; do sleep 1; done
+        echo '✅ Redis готов'
+        echo '🧠 Инициализация базы данных...'
+        python -c 'from app.database import engine; from app.analytics.models import Base; Base.metadata.create_all(bind=engine)'
+        echo '✅ Таблицы БД созданы/проверены'
+        echo '🚀 Запуск API сервиса...'
+        uvicorn app.main:app --host 0.0.0.0 --port 8000
+      "
+
+  streamlit-demo:
+    build:
+      context: .
+      dockerfile: Dockerfile.streamlit
+    container_name: transcription-streamlit
+    ports:
+      - "${DEMO_PORT:-8501}:8501"
+    volumes:
+      - ./streamlit-app:/app
+    environment:
+      - API_URL=http://transcription-api:8000
+      - API_BASE_URL=http://transcription-api:8000
+    depends_on:
+      - transcription-api
+    networks:
+      - transcription-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
 
 networks:
   transcription-network:

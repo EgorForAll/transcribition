@@ -1,33 +1,20 @@
 FROM python:3.11-slim
 
+# Установка системных зависимостей
+RUN apt-get update && apt-get install -y netcat-openbsd ffmpeg libsndfile1 && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
-# Устанавливаем системные зависимости
-RUN apt-get update && apt-get install -y \
-    ffmpeg \
-    curl \
-    libsndfile1 \
-    && rm -rf /var/lib/apt/lists/*
-
-# Копируем единый requirements
+# Копируем зависимости
 COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Устанавливаем все зависимости Python
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
-
-# Копируем весь проект
+# Копируем код приложения
 COPY . .
 
 # Создаем необходимые директории
-RUN mkdir -p uploads outputs demo_data
+RUN mkdir -p uploads outputs
 
-# Создаем скрипт запуска
-COPY docker-entrypoint.sh .
-RUN chmod +x docker-entrypoint.sh
+EXPOSE 8000
 
-# Открываем порты
-EXPOSE 8000 8501
-
-# Определяем точку входа
-ENTRYPOINT ["./docker-entrypoint.sh"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

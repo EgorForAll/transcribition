@@ -25,7 +25,7 @@ class TranscriptionResponse(BaseModel):
 
     model_config = ConfigDict(
         from_attributes=True,
-        extra="ignore",  # Игнорировать лишние поля
+        extra="ignore",
     )
 
 
